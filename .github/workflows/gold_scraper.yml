@@ -1,7 +1,6 @@
 name: Gold Coin Price Checker
 
 on:
-  push:
   schedule:
     - cron: '30 4 * * *'  # Run once daily at 10:00 AM IST (04:30 AM UTC)
   workflow_dispatch:

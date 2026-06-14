@@ -30,19 +30,22 @@ def check_gold_price():
     print(f"Checking Tanishq gold coin price at: {url}")
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.firefox.launch(headless=True)
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
+            viewport={"width": 1920, "height": 1080},
+            locale="en-US,en;q=0.9",
+            timezone_id="Asia/Kolkata"
         )
         page = context.new_page()
         
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            response = page.goto(url, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(5000)  # Wait for dynamic elements (price updates via API)
             
             # Check for Cloudflare/blocking
             content = page.content()
-            if "Attention Required" in content or "cf-challenge" in content:
+            if "Attention Required" in content or "cf-challenge" in content or "security service" in content:
                 print("DETECTED: Cloudflare Bot Protection blocked the request.")
                 page.screenshot(path="gold_debug_screenshot.png")
                 send_telegram_message("⚠️ GOLD SCRAPER BLOCKED: Cloudflare hit a challenge on Tanishq.")

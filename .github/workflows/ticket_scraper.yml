@@ -1,7 +1,9 @@
 name: BMS Ticket Checker
 
 on:
-  push:
+  # Schedule disabled — uncomment to re-enable
+  # schedule:
+  #   - cron: '20 * * * *'
   workflow_dispatch:
 
 jobs:

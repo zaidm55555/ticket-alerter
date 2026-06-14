@@ -17,12 +17,14 @@ jobs:
             -d "chat_id=${TELEGRAM_CHAT_ID}&text=🧪 Test from Bot 1 to User 1")
           echo "Response: $RESPONSE"
 
-      - name: Test Bot 2 -> User 2 (chat ID 8734297568)
+      - name: Test Bot 2 -> User 2
         env:
           TELEGRAM_BOT_TOKEN_2: ${{ secrets.TELEGRAM_BOT_TOKEN_2 }}
+          TELEGRAM_CHAT_ID_2: ${{ secrets.TELEGRAM_CHAT_ID_2 }}
         run: |
           echo "TELEGRAM_BOT_TOKEN_2 is set: $([ -n "$TELEGRAM_BOT_TOKEN_2" ] && echo YES || echo NO)"
-          echo "--- Bot 2 sending to hardcoded chat ID 8734297568 ---"
+          echo "TELEGRAM_CHAT_ID_2 is set: $([ -n "$TELEGRAM_CHAT_ID_2" ] && echo YES || echo NO)"
+          echo "--- Bot 2 sending to TELEGRAM_CHAT_ID_2 ---"
           RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN_2}/sendMessage" \
-            -d "chat_id=8734297568&text=🪙 Gold Coin Price Update test - Bot 2 working!")
+            -d "chat_id=${TELEGRAM_CHAT_ID_2}&text=🪙 Gold Coin Price Update test - Bot 2 working!")
           echo "Response: $RESPONSE"

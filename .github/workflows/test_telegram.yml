@@ -1,0 +1,30 @@
+name: Test Telegram Notifications
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Telegram Chat IDs
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID_2: ${{ secrets.TELEGRAM_CHAT_ID_2 }}
+        run: |
+          echo "TELEGRAM_CHAT_ID is set: $([ -n "$TELEGRAM_CHAT_ID" ] && echo YES || echo NO)"
+          echo "TELEGRAM_CHAT_ID_2 is set: $([ -n "$TELEGRAM_CHAT_ID_2" ] && echo YES || echo NO)"
+
+          send_msg() {
+            CHAT_ID=$1
+            RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -d "chat_id=${CHAT_ID}&text=🧪 Test message from GitHub Actions - Gold Scraper")
+            echo "Response for $CHAT_ID: $RESPONSE"
+          }
+
+          echo "--- Sending to TELEGRAM_CHAT_ID ---"
+          send_msg "$TELEGRAM_CHAT_ID"
+
+          echo "--- Sending to TELEGRAM_CHAT_ID_2 ---"
+          send_msg "$TELEGRAM_CHAT_ID_2"

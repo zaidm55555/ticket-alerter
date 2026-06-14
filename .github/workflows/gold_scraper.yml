@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install playwright
-          playwright install chromium
+          playwright install firefox
 
       - name: Run Scraper
         env:

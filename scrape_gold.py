@@ -26,117 +26,64 @@ def send_telegram_message(message):
         print(f"Error sending Telegram message: {e}")
 
 def check_gold_price():
-    url = "https://www.tanishq.co.in/product/1-gram-24-karat-gold-coin-with-lakshmi-motif-600105zgbraw00.html?lang=en_IN"
-    print(f"Checking Tanishq gold coin price at: {url}")
+    targets = [
+        {
+            "name": "Tanishq Product Page",
+            "url": "https://www.tanishq.co.in/product/1-gram-24-karat-gold-coin-with-lakshmi-motif-600105zgbraw00.html?lang=en_IN"
+        },
+        {
+            "name": "Joyalukkas Home",
+            "url": "https://www.joyalukkas.in/"
+        },
+        {
+            "name": "Malabar Gold Coins",
+            "url": "https://www.malabargoldanddiamonds.com/gold-coins.html"
+        },
+        {
+            "name": "CaratLane Gold Coins",
+            "url": "https://www.caratlane.com/gold-coins.html"
+        },
+        {
+            "name": "GoodReturns Gold Rates India",
+            "url": "https://www.goodreturns.in/gold-rates/"
+        }
+    ]
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--disable-blink-features=AutomationControlled"]
-        )
+        browser = p.firefox.launch(headless=True)
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0",
             viewport={"width": 1920, "height": 1080},
             locale="en-US,en;q=0.9",
             timezone_id="Asia/Kolkata"
         )
         page = context.new_page()
-        page.add_init_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
         
-        try:
-            response = page.goto(url, wait_until="domcontentloaded", timeout=60000)
-            page.wait_for_timeout(5000)  # Wait for dynamic elements (price updates via API)
-            
-            print(f"DEBUG: Final page URL: {page.url}")
-            print(f"DEBUG: Response status: {response.status if response else 'No response'}")
-            print(f"DEBUG: Page Title: {page.title()}")
-            
-            # Check for Cloudflare/blocking
-            content = page.content()
-            if "Attention Required" in content or "cf-challenge" in content:
-                print("DETECTED: Cloudflare Bot Protection blocked the request.")
-                page.screenshot(path="gold_debug_screenshot.png")
-                send_telegram_message("⚠️ GOLD SCRAPER BLOCKED: Cloudflare hit a challenge on Tanishq.")
-                return
-
-            title = page.title().replace(" | Tanishq", "").strip()
-            if not title:
-                title = "1 gram 24 Karat Gold Coin with Lakshmi Motif"
-                
-            price = None
-            
-            # Strategy 1: Look for pdp-product-main-sale-price
-            sale_el = page.locator(".pdp-product-main-sale-price").first
-            sale_count = sale_el.count()
-            print(f"DEBUG: Strategy 1 selector count: {sale_count}")
-            if sale_count > 0:
-                text = sale_el.inner_text().strip()
-                print(f"DEBUG: Strategy 1 inner text: '{text}'")
-                digits = re.sub(r'[^\d]', '', text)
-                if digits:
-                    price = int(digits)
-                    print(f"Strategy 1 (pdp-product-main-sale-price) succeeded: ₹{price}")
-
-            # Strategy 2: Look for evgProductPrice content attribute
-            if not price:
-                evg_el = page.locator(".evgProductPrice").first
-                evg_count = evg_el.count()
-                print(f"DEBUG: Strategy 2 selector count: {evg_count}")
-                if evg_count > 0:
-                    content_attr = evg_el.get_attribute("content")
-                    print(f"DEBUG: Strategy 2 content attr: '{content_attr}'")
-                    if content_attr:
-                        digits = re.sub(r'[^\d]', '', content_attr)
-                        if digits:
-                            price = int(digits)
-                            print(f"Strategy 2 (evgProductPrice) succeeded: ₹{price}")
-
-            # Strategy 3: Regex match on general page text
-            if not price:
-                # Find occurrences of ₹ or Rs. followed by digits and select the one that matches our expected range (e.g. 10000-25000)
-                matches = re.findall(r'(?:₹|Rs\.?)\s*([\d,]+)', content)
-                print(f"DEBUG: Strategy 3 regex matches found: {matches[:10]}")
-                for match in matches:
-                    clean_val = match.replace(',', '')
-                    try:
-                        val = int(clean_val)
-                        if 5000 <= val <= 25000:
-                            price = val
-                            print(f"Strategy 3 (Regex search) succeeded: ₹{price}")
-                            break
-                    except ValueError:
-                        continue
-            
-            if price:
-                formatted_price = f"{price:,}"
-                msg = (
-                    f"🪙 *Gold Coin Price Update* 🪙\n\n"
-                    f"*Product:* {title}\n"
-                    f"*Current Price:* ₹{formatted_price}\n\n"
-                    f"🔗 [View Product]({url})"
-                )
-                send_telegram_message(msg)
-            else:
-                print("Could not detect the price info.")
-                print("DEBUG: First 1500 chars of body text:")
-                try:
-                    body_text = page.locator("body").inner_text()
-                    print(body_text[:1500])
-                except Exception as body_err:
-                    print(f"Could not print body text: {body_err}")
-                page.screenshot(path="gold_debug_screenshot.png")
-                send_telegram_message("⚠️ GOLD SCRAPER ERROR: Could not find price data. The page layout might have changed.")
-                
-        except Exception as e:
-            error_msg = f"❌ GOLD SCRAPER CRASHED: {str(e)}"
-            print(error_msg)
+        for target in targets:
+            name = target["name"]
+            url = target["url"]
+            print(f"\n--- Testing {name} at {url} ---")
             try:
-                page.screenshot(path="gold_debug_screenshot.png")
-            except:
-                pass
-            send_telegram_message(error_msg)
-        finally:
-            browser.close()
+                response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                page.wait_for_timeout(3000)
+                print(f"Status: {response.status if response else 'No response'}")
+                print(f"Final URL: {page.url}")
+                print(f"Title: {page.title()}")
+                
+                content = page.content()
+                if "Attention Required" in content or "cf-challenge" in content or "security service" in content:
+                    print("Block check: Detected Cloudflare / Bot Protection block page.")
+                else:
+                    print("Block check: No block page detected.")
+                    # Print some preview of content to see if we can find price info
+                    # e.g., search for numbers or price selectors
+                    print("Searching for currency patterns...")
+                    matches = re.findall(r'(?:₹|Rs\.?)\s*([\d,]+)', content)
+                    print(f"Found matches: {matches[:10]}")
+            except Exception as e:
+                print(f"Error loading {name}: {e}")
+                
+        browser.close()
 
 if __name__ == "__main__":
     check_gold_price()

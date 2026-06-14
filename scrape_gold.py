@@ -6,24 +6,35 @@ import urllib.parse
 from playwright.sync_api import sync_playwright
 
 def send_telegram_message(message):
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    
-    if not token or not chat_id:
-        print("Telegram notification skipped: Environment variables not set.")
+    primary_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not primary_token:
+        print("Telegram notification skipped: TELEGRAM_BOT_TOKEN not set.")
         return
 
-    print(f"Sending Telegram notification: {message}")
-    try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        data = urllib.parse.urlencode({"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}).encode("utf-8")
-        with urllib.request.urlopen(url, data=data) as response:
-            if response.status == 200:
-                print("Telegram message sent successfully!")
-            else:
-                print(f"Failed to send Telegram message. Status: {response.status}")
-    except Exception as e:
-        print(f"Error sending Telegram message: {e}")
+    # Each entry: (bot_token, chat_id)
+    recipients = [
+        (primary_token, os.getenv("TELEGRAM_CHAT_ID")),
+        (os.getenv("TELEGRAM_BOT_TOKEN_2") or primary_token, os.getenv("TELEGRAM_CHAT_ID_2")),
+    ]
+    # Filter out entries with no chat_id
+    recipients = [(tok, cid) for tok, cid in recipients if cid]
+
+    if not recipients:
+        print("Telegram notification skipped: No chat IDs configured.")
+        return
+
+    for token, chat_id in recipients:
+        print(f"Sending Telegram notification to {chat_id}...")
+        try:
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            data = urllib.parse.urlencode({"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}).encode("utf-8")
+            with urllib.request.urlopen(url, data=data) as response:
+                if response.status == 200:
+                    print(f"Telegram message sent successfully to {chat_id}!")
+                else:
+                    print(f"Failed to send Telegram message to {chat_id}. Status: {response.status}")
+        except Exception as e:
+            print(f"Error sending Telegram message to {chat_id}: {e}")
 
 def check_gold_price():
     url = "https://www.tanishq.co.in/product/1-gram-24-karat-gold-coin-with-lakshmi-motif-600105zgbraw00.html?lang=en_IN"

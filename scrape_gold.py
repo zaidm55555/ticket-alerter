@@ -37,8 +37,12 @@ def check_gold_price():
         page = context.new_page()
         
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            response = page.goto(url, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(5000)  # Wait for dynamic elements (price updates via API)
+            
+            print(f"DEBUG: Final page URL: {page.url}")
+            print(f"DEBUG: Response status: {response.status if response else 'No response'}")
+            print(f"DEBUG: Page Title: {page.title()}")
             
             # Check for Cloudflare/blocking
             content = page.content()
@@ -56,8 +60,11 @@ def check_gold_price():
             
             # Strategy 1: Look for pdp-product-main-sale-price
             sale_el = page.locator(".pdp-product-main-sale-price").first
-            if sale_el.count() > 0:
+            sale_count = sale_el.count()
+            print(f"DEBUG: Strategy 1 selector count: {sale_count}")
+            if sale_count > 0:
                 text = sale_el.inner_text().strip()
+                print(f"DEBUG: Strategy 1 inner text: '{text}'")
                 digits = re.sub(r'[^\d]', '', text)
                 if digits:
                     price = int(digits)
@@ -66,8 +73,11 @@ def check_gold_price():
             # Strategy 2: Look for evgProductPrice content attribute
             if not price:
                 evg_el = page.locator(".evgProductPrice").first
-                if evg_el.count() > 0:
+                evg_count = evg_el.count()
+                print(f"DEBUG: Strategy 2 selector count: {evg_count}")
+                if evg_count > 0:
                     content_attr = evg_el.get_attribute("content")
+                    print(f"DEBUG: Strategy 2 content attr: '{content_attr}'")
                     if content_attr:
                         digits = re.sub(r'[^\d]', '', content_attr)
                         if digits:
@@ -78,11 +88,11 @@ def check_gold_price():
             if not price:
                 # Find occurrences of ₹ or Rs. followed by digits and select the one that matches our expected range (e.g. 10000-25000)
                 matches = re.findall(r'(?:₹|Rs\.?)\s*([\d,]+)', content)
+                print(f"DEBUG: Strategy 3 regex matches found: {matches[:10]}")
                 for match in matches:
                     clean_val = match.replace(',', '')
                     try:
                         val = int(clean_val)
-                        # A 1-gram gold coin should typically be between ₹5,000 and ₹25,000
                         if 5000 <= val <= 25000:
                             price = val
                             print(f"Strategy 3 (Regex search) succeeded: ₹{price}")
@@ -101,6 +111,12 @@ def check_gold_price():
                 send_telegram_message(msg)
             else:
                 print("Could not detect the price info.")
+                print("DEBUG: First 1500 chars of body text:")
+                try:
+                    body_text = page.locator("body").inner_text()
+                    print(body_text[:1500])
+                except Exception as body_err:
+                    print(f"Could not print body text: {body_err}")
                 page.screenshot(path="gold_debug_screenshot.png")
                 send_telegram_message("⚠️ GOLD SCRAPER ERROR: Could not find price data. The page layout might have changed.")
                 

@@ -26,28 +26,8 @@ def send_telegram_message(message):
         print(f"Error sending Telegram message: {e}")
 
 def check_gold_price():
-    targets = [
-        {
-            "name": "Tanishq Product Page",
-            "url": "https://www.tanishq.co.in/product/1-gram-24-karat-gold-coin-with-lakshmi-motif-600105zgbraw00.html?lang=en_IN"
-        },
-        {
-            "name": "Joyalukkas Home",
-            "url": "https://www.joyalukkas.in/"
-        },
-        {
-            "name": "Malabar Gold Coins",
-            "url": "https://www.malabargoldanddiamonds.com/gold-coins.html"
-        },
-        {
-            "name": "CaratLane Gold Coins",
-            "url": "https://www.caratlane.com/gold-coins.html"
-        },
-        {
-            "name": "GoodReturns Gold Rates India",
-            "url": "https://www.goodreturns.in/gold-rates/"
-        }
-    ]
+    url = "https://www.tanishq.co.in/product/1-gram-24-karat-gold-coin-with-lakshmi-motif-600105zgbraw00.html?lang=en_IN"
+    print(f"Checking Tanishq gold coin price at: {url}")
     
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
@@ -59,31 +39,84 @@ def check_gold_price():
         )
         page = context.new_page()
         
-        for target in targets:
-            name = target["name"]
-            url = target["url"]
-            print(f"\n--- Testing {name} at {url} ---")
+        try:
+            response = page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(5000)  # Wait for dynamic elements (price updates via API)
+            
+            # Check for Cloudflare/blocking
+            content = page.content()
+            if "Attention Required" in content or "cf-challenge" in content or "security service" in content:
+                print("DETECTED: Cloudflare Bot Protection blocked the request.")
+                page.screenshot(path="gold_debug_screenshot.png")
+                send_telegram_message("⚠️ GOLD SCRAPER BLOCKED: Cloudflare hit a challenge on Tanishq.")
+                return
+
+            title = page.title().replace(" | Tanishq", "").strip()
+            if not title:
+                title = "1 gram 24 Karat Gold Coin with Lakshmi Motif"
+                
+            price = None
+            
+            # Strategy 1: Look for pdp-product-main-sale-price
+            sale_el = page.locator(".pdp-product-main-sale-price").first
+            if sale_el.count() > 0:
+                text = sale_el.inner_text().strip()
+                digits = re.sub(r'[^\d]', '', text)
+                if digits:
+                    price = int(digits)
+                    print(f"Strategy 1 (pdp-product-main-sale-price) succeeded: ₹{price}")
+
+            # Strategy 2: Look for evgProductPrice content attribute
+            if not price:
+                evg_el = page.locator(".evgProductPrice").first
+                if evg_el.count() > 0:
+                    content_attr = evg_el.get_attribute("content")
+                    if content_attr:
+                        digits = re.sub(r'[^\d]', '', content_attr)
+                        if digits:
+                            price = int(digits)
+                            print(f"Strategy 2 (evgProductPrice) succeeded: ₹{price}")
+
+            # Strategy 3: Regex match on general page text
+            if not price:
+                # Find occurrences of ₹ or Rs. followed by digits and select the one that matches our expected range (e.g. 10000-25000)
+                matches = re.findall(r'(?:₹|Rs\.?)\s*([\d,]+)', content)
+                for match in matches:
+                    clean_val = match.replace(',', '')
+                    try:
+                        val = int(clean_val)
+                        # A 1-gram gold coin should typically be between ₹5,000 and ₹25,000
+                        if 5000 <= val <= 25000:
+                            price = val
+                            print(f"Strategy 3 (Regex search) succeeded: ₹{price}")
+                            break
+                    except ValueError:
+                        continue
+            
+            if price:
+                formatted_price = f"{price:,}"
+                msg = (
+                    f"🪙 *Gold Coin Price Update* 🪙\n\n"
+                    f"*Product:* {title}\n"
+                    f"*Current Price:* ₹{formatted_price}\n\n"
+                    f"🔗 [View Product]({url})"
+                )
+                send_telegram_message(msg)
+            else:
+                print("Could not detect the price info.")
+                page.screenshot(path="gold_debug_screenshot.png")
+                send_telegram_message("⚠️ GOLD SCRAPER ERROR: Could not find price data. The page layout might have changed.")
+                
+        except Exception as e:
+            error_msg = f"❌ GOLD SCRAPER CRASHED: {str(e)}"
+            print(error_msg)
             try:
-                response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
-                page.wait_for_timeout(3000)
-                print(f"Status: {response.status if response else 'No response'}")
-                print(f"Final URL: {page.url}")
-                print(f"Title: {page.title()}")
-                
-                content = page.content()
-                if "Attention Required" in content or "cf-challenge" in content or "security service" in content:
-                    print("Block check: Detected Cloudflare / Bot Protection block page.")
-                else:
-                    print("Block check: No block page detected.")
-                    # Print some preview of content to see if we can find price info
-                    # e.g., search for numbers or price selectors
-                    print("Searching for currency patterns...")
-                    matches = re.findall(r'(?:₹|Rs\.?)\s*([\d,]+)', content)
-                    print(f"Found matches: {matches[:10]}")
-            except Exception as e:
-                print(f"Error loading {name}: {e}")
-                
-        browser.close()
+                page.screenshot(path="gold_debug_screenshot.png")
+            except:
+                pass
+            send_telegram_message(error_msg)
+        finally:
+            browser.close()
 
 if __name__ == "__main__":
     check_gold_price()

@@ -26,5 +26,5 @@ jobs:
           echo "--- Sending to TELEGRAM_CHAT_ID ---"
           send_msg "$TELEGRAM_CHAT_ID"
 
-          echo "--- Sending to TELEGRAM_CHAT_ID_2 ---"
-          send_msg "$TELEGRAM_CHAT_ID_2"
+          echo "--- Sending to hardcoded chat ID 8734297568 ---"
+          send_msg "8734297568"

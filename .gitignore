@@ -15,3 +15,8 @@ run_log.txt
 # Playwright
 .playwright/
 ms-playwright/
+
+# Screenshots
+*screenshot.png
+*.png
+

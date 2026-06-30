@@ -20,3 +20,7 @@ ms-playwright/
 *screenshot.png
 *.png
 
+# Web app
+web/node_modules/
+web/.next/
+

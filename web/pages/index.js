@@ -38,11 +38,28 @@ export default function Home() {
     .reverse()
     .find((r) => r.brand === "Tanishq");
 
+  function pctChange(brand, days) {
+    const sorted = [...rates].filter((r) => r.brand === brand).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+    if (sorted.length < 2) return null;
+    const latest = sorted[sorted.length - 1];
+    const latestDate = new Date(latest.date);
+    const targetDate = new Date(latestDate);
+    targetDate.setDate(targetDate.getDate() - days);
+    const target = sorted.filter((r) => new Date(r.date) <= targetDate).pop();
+    if (!target || target.rate === 0) return null;
+    return ((latest.rate - target.rate) / target.rate) * 100;
+  }
+
   const currentRate = latestJoyalukkas?.rate || 0;
   const profitPerGram = buyRateValue ? currentRate - buyRateValue : 0;
   const totalProfit = profitPerGram * BUY_GRAMS;
   const currentValue5g = currentRate * BUY_GRAMS;
   const buyValue5g = buyRateValue ? buyRateValue * BUY_GRAMS : 0;
+
+  const t7 = pctChange("Tanishq", 7);
+  const t30 = pctChange("Tanishq", 30);
+  const j7 = pctChange("Joyalukkas", 7);
+  const j30 = pctChange("Joyalukkas", 30);
 
   useEffect(() => {
     if (rates.length === 0 || !canvasRef.current) return;
@@ -175,9 +192,17 @@ export default function Home() {
               {latestTanishq
                 ? Number(latestTanishq.rate).toLocaleString()
                 : "—"}
+              {t7 !== null && (
+                <span className={`pct ${t7 >= 0 ? "up" : "down"}`}>
+                  {t7 >= 0 ? "+" : ""}{t7.toFixed(1)}%
+                </span>
+              )}
             </span>
             <span className="meta">
               {latestTanishq?.date || "No data"}
+              {t30 !== null && (
+                <span> &middot; 30d: {t30 >= 0 ? "+" : ""}{t30.toFixed(1)}%</span>
+              )}
             </span>
           </div>
 
@@ -188,9 +213,17 @@ export default function Home() {
               {latestJoyalukkas
                 ? Number(latestJoyalukkas.rate).toLocaleString()
                 : "—"}
+              {j7 !== null && (
+                <span className={`pct ${j7 >= 0 ? "up" : "down"}`}>
+                  {j7 >= 0 ? "+" : ""}{j7.toFixed(1)}%
+                </span>
+              )}
             </span>
             <span className="meta">
               {latestJoyalukkas?.date || "No data"}
+              {j30 !== null && (
+                <span> &middot; 30d: {j30 >= 0 ? "+" : ""}{j30.toFixed(1)}%</span>
+              )}
             </span>
           </div>
 
@@ -283,12 +316,30 @@ export default function Home() {
           font-size: 1.75rem;
           font-weight: 700;
           color: #f1f5f9;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex-wrap: wrap;
         }
         .card.profit.up .value {
           color: #22c55e;
         }
         .card.profit.down .value {
           color: #ef4444;
+        }
+        .pct {
+          font-size: 0.85rem;
+          font-weight: 600;
+          padding: 0.15rem 0.5rem;
+          border-radius: 6px;
+        }
+        .pct.up {
+          color: #22c55e;
+          background: rgba(34, 197, 94, 0.1);
+        }
+        .pct.down {
+          color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
         }
         .meta {
           font-size: 0.8rem;

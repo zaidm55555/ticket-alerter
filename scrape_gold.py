@@ -57,7 +57,7 @@ def check_joyalukkas_gold_rate():
     with sync_playwright() as p:
         page, browser = None, None
         try:
-            page, browser = scrape_with_playwright(p, url, 5000)
+            page, browser = scrape_with_playwright(p, url, 8000)
 
             content = page.content()
             if "Attention Required" in content or "cf-challenge" in content or "security service" in content.lower():
@@ -65,11 +65,18 @@ def check_joyalukkas_gold_rate():
                 page.screenshot(path="joy_debug_screenshot.png")
                 return None
 
+            page.wait_for_timeout(3000)
             online_btn = page.locator("span:has-text(\"Online Store Rate\")").first
             if online_btn.count() == 0:
-                print("Could not find Online Store Rate button")
-                return None
+                page.wait_for_timeout(5000)
+                online_btn = page.locator("span:has-text(\"Online Store Rate\")").first
+                if online_btn.count() == 0:
+                    page.screenshot(path="joy_debug_screenshot.png")
+                    print("Could not find Online Store Rate button")
+                    return None
 
+            online_btn.scroll_into_view_if_needed()
+            page.wait_for_timeout(500)
             online_btn.click()
             page.wait_for_timeout(3000)
 

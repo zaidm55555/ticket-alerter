@@ -1,9 +1,11 @@
 import re
 import os
 import sys
+from datetime import datetime, timezone
 import urllib.request
 import urllib.parse
 from playwright.sync_api import sync_playwright
+from pymongo import MongoClient
 
 def send_telegram_message(message):
     primary_token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -35,6 +37,30 @@ def send_telegram_message(message):
                     print(f"Failed to send Telegram message to {chat_id}. Status: {response.status}")
         except Exception as e:
             print(f"Error sending Telegram message to {chat_id}: {e}")
+
+def save_to_mongodb(brand, rate):
+    uri = os.getenv("MONGODB_URI")
+    if not uri:
+        print("MongoDB save skipped: MONGODB_URI not set.")
+        return
+    try:
+        client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+        db = client["gold_prices"]
+        collection = db["rates"]
+        now = datetime.now(timezone.utc)
+        doc = {
+            "date": now.strftime("%Y-%m-%d"),
+            "time": now.strftime("%H:%M:%S"),
+            "ingested_at": now.isoformat(),
+            "rate": rate,
+            "brand": brand
+        }
+        collection.insert_one(doc)
+        print(f"MongoDB: saved {brand} rate ₹{rate}")
+        client.close()
+    except Exception as e:
+        print(f"MongoDB save failed: {e}")
+
 
 def scrape_with_playwright(p, url, wait_after_load=5000):
     browser = p.firefox.launch(headless=True)
@@ -85,6 +111,7 @@ def check_joyalukkas_gold_rate():
             if match:
                 rate = int(match.group(1).replace(',', ''))
                 print(f"Joyalukkas 24KT online rate: ₹{rate}")
+                save_to_mongodb("Joyalukkas", rate)
                 return rate
 
             print("Could not find 24KT rate text on Joyalukkas")
@@ -156,6 +183,8 @@ def check_gold_price():
                         continue
 
             tanishq_price = price
+            if tanishq_price:
+                save_to_mongodb("Tanishq", tanishq_price)
 
         except Exception as e:
             error_msg = f"❌ TANISHQ SCRAPER CRASHED: {str(e)}"

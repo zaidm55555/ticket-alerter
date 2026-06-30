@@ -19,7 +19,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install playwright
+          pip install playwright pymongo
           playwright install firefox
 
       - name: Run Scraper
@@ -28,6 +28,7 @@ jobs:
           TELEGRAM_BOT_TOKEN_2: ${{ secrets.TELEGRAM_BOT_TOKEN_2 }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_CHAT_ID_2: ${{ secrets.TELEGRAM_CHAT_ID_2 }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: python scrape_gold.py
 
       - name: Upload Debug Screenshot

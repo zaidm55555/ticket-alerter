@@ -1,5 +1,5 @@
-const CACHE = "gold-tracker-v1";
-const URLS = ["/", "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const CACHE = "gold-tracker-v2";
+const URLS = ["/", "/manifest.json", "/icon-192-v2.png", "/icon-512-v2.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(URLS)));

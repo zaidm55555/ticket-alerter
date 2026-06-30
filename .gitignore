@@ -19,7 +19,7 @@ ms-playwright/
 # Screenshots (but not web app icons)
 *screenshot.png
 *.png
-!web/public/icon-*.png
+!web/public/icon-*-v2.png
 
 # Web app
 web/node_modules/

@@ -38,14 +38,11 @@ export default function Home() {
     .reverse()
     .find((r) => r.brand === "Tanishq");
 
-  const profitPerGram = buyRateValue
-    ? (latestJoyalukkas?.rate || 0) / 10 - buyRateValue / 10
-    : 0;
+  const currentRate = latestJoyalukkas?.rate || 0;
+  const profitPerGram = buyRateValue ? currentRate - buyRateValue : 0;
   const totalProfit = profitPerGram * BUY_GRAMS;
-  const currentValue5g = latestJoyalukkas
-    ? (latestJoyalukkas.rate / 10) * BUY_GRAMS
-    : 0;
-  const buyValue5g = buyRateValue ? (buyRateValue / 10) * BUY_GRAMS : 0;
+  const currentValue5g = currentRate * BUY_GRAMS;
+  const buyValue5g = buyRateValue ? buyRateValue * BUY_GRAMS : 0;
 
   useEffect(() => {
     if (rates.length === 0 || !canvasRef.current) return;
@@ -79,7 +76,7 @@ export default function Home() {
             spanGaps: false,
           },
           {
-            label: "Joyalukkas 24KT (per 10gm)",
+            label: "Joyalukkas 24KT (per gm)",
             data: joyalukkasData,
             borderColor: "#2563eb",
             backgroundColor: "rgba(37, 99, 235, 0.1)",
@@ -185,7 +182,7 @@ export default function Home() {
           </div>
 
           <div className="card joyalukkas">
-            <span className="label">Joyalukkas 24KT (per 10gm)</span>
+            <span className="label">Joyalukkas 24KT (per gm)</span>
             <span className="value">
               ₹
               {latestJoyalukkas

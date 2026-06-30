@@ -16,9 +16,10 @@ run_log.txt
 .playwright/
 ms-playwright/
 
-# Screenshots
+# Screenshots (but not web app icons)
 *screenshot.png
 *.png
+!web/public/icon-*.png
 
 # Web app
 web/node_modules/

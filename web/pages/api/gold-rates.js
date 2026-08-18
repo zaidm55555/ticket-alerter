@@ -21,7 +21,19 @@ export default async function handler(req, res) {
       .sort({ ingested_at: 1 })
       .toArray();
 
-    res.status(200).json(rates);
+    const latestPerDay = {};
+    for (const r of rates) {
+      const key = `${r.date}__${r.brand}`;
+      if (!latestPerDay[key] || r.ingested_at > latestPerDay[key].ingested_at) {
+        latestPerDay[key] = r;
+      }
+    }
+
+    const deduped = Object.values(latestPerDay).sort(
+      (a, b) => a.date.localeCompare(b.date)
+    );
+
+    res.status(200).json(deduped);
   } catch (e) {
     console.error("MongoDB fetch error:", e);
     res.status(500).json({ error: "Failed to fetch gold rates" });

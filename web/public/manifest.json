@@ -1,7 +1,7 @@
 {
   "name": "Gold Price Tracker",
   "short_name": "Gold Tracker",
-  "description": "Track daily gold rates from Tanishq and Joyalukkas",
+  "description": "Track daily gold rates from Joyalukkas",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

@@ -1,8 +1,6 @@
-const CACHE = "gold-tracker-v2";
-const URLS = ["/", "/manifest.json", "/icon-192-v2.png", "/icon-512-v2.png"];
+const CACHE = "gold-tracker-v3";
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(URLS)));
   self.skipWaiting();
 });
 
@@ -21,6 +19,12 @@ self.addEventListener("fetch", (e) => {
     return;
   }
   e.respondWith(
-    caches.match(e.request).then((cached) => cached || fetch(e.request))
+    fetch(e.request)
+      .then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE).then((c) => c.put(e.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

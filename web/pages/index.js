@@ -11,8 +11,11 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState("all");
+  const [menuOpen, setMenuOpen] = useState(false);
   const chartRef = useRef(null);
   const canvasRef = useRef(null);
+  const drawerRef = useRef(null);
+  const overlayRef = useRef(null);
 
   useEffect(() => {
     fetch("/api/gold-rates")
@@ -253,6 +256,34 @@ export default function Home() {
     };
   }, [rates, timeRange]);
 
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    if (menuOpen) {
+      document.addEventListener("keydown", handleKey);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
+  }, [menuOpen]);
+
+  const rangeOptions = [
+    ["7d", "7D"],
+    ["30d", "30D"],
+    ["90d", "90D"],
+    ["180d", "6M"],
+    ["all", "All"],
+  ];
+
+  const navLinks = [
+    { label: "Dashboard", href: "#dashboard", action: () => { setMenuOpen(false); } },
+    { label: "Rate History", href: "#chart", action: () => { setMenuOpen(false); document.getElementById("chart")?.scrollIntoView({ behavior: "smooth" }); } },
+    { label: "P&L Summary", href: "#pnl", action: () => { setMenuOpen(false); document.getElementById("pnl")?.scrollIntoView({ behavior: "smooth" }); } },
+  ];
+
   if (loading)
     return (
       <div className="container">
@@ -299,11 +330,65 @@ export default function Home() {
   return (
     <div className="page">
       <header className="header">
-        <h1>Gold Price Tracker</h1>
-        <p className="subtitle">Joyalukkas 24KT daily rates</p>
+        <div className="header-row">
+          <div className="header-left">
+            <button
+              className="hamburger"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Menu"
+            >
+              <span className={`bar ${menuOpen ? "open" : ""}`} />
+              <span className={`bar ${menuOpen ? "open" : ""}`} />
+              <span className={`bar ${menuOpen ? "open" : ""}`} />
+            </button>
+            <div>
+              <h1>Gold Price Tracker</h1>
+              <p className="subtitle">Joyalukkas 24KT daily rates</p>
+            </div>
+          </div>
+          <div className="header-right">
+            <span className="badge">
+              {latestJoyalukkas
+                ? `₹${Number(latestJoyalukkas.rate).toLocaleString("en-IN")}`
+                : "—"}
+            </span>
+          </div>
+        </div>
       </header>
 
-      <main className="main">
+      <div
+        className={`drawer-overlay ${menuOpen ? "visible" : ""}`}
+        ref={overlayRef}
+        onClick={() => setMenuOpen(false)}
+      />
+      <nav className={`drawer ${menuOpen ? "open" : ""}`} ref={drawerRef}>
+        <div className="drawer-header">
+          <span className="drawer-title">Menu</span>
+          <button className="drawer-close" onClick={() => setMenuOpen(false)}>
+            ✕
+          </button>
+        </div>
+        <ul className="drawer-links">
+          {navLinks.map((link) => (
+            <li key={link.label}>
+              <a
+                href={link.href}
+                onClick={(e) => {
+                  e.preventDefault();
+                  link.action();
+                }}
+              >
+                {link.label}
+              </a>
+            </li>
+          ))}
+        </ul>
+        <div className="drawer-footer">
+          <span>Joyalukkas 24KT</span>
+        </div>
+      </nav>
+
+      <main className="main" id="dashboard">
         <div className="cards">
           <div className="card joyalukkas">
             <span className="label">Current Rate (per gm)</span>
@@ -352,7 +437,7 @@ export default function Home() {
             </span>
           </div>
 
-          <div className={`card profit ${totalProfit >= 0 ? "up" : "down"}`}>
+          <div className={`card profit ${totalProfit >= 0 ? "up" : "down"}`} id="pnl">
             <span className="label">P&amp;L on 5g bought Jun 30</span>
             <span className="value">
               {totalProfit >= 0 ? "+" : ""}₹
@@ -373,17 +458,11 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="chart-wrapper">
+        <div className="chart-wrapper" id="chart">
           <div className="chart-header">
             <h2>Rate History</h2>
             <div className="range-buttons">
-              {[
-                ["7d", "7D"],
-                ["30d", "30D"],
-                ["90d", "90D"],
-                ["180d", "6M"],
-                ["all", "All"],
-              ].map(([val, label]) => (
+              {rangeOptions.map(([val, label]) => (
                 <button
                   key={val}
                   className={`range-btn ${timeRange === val ? "active" : ""}`}
@@ -410,38 +489,115 @@ export default function Home() {
           background: #0f172a;
           color: #e2e8f0;
           font-family: system-ui, -apple-system, sans-serif;
-          padding: 2rem 1rem;
         }
+
         .header {
-          text-align: center;
-          margin-bottom: 2rem;
+          position: sticky;
+          top: 0;
+          z-index: 100;
+          background: rgba(15, 23, 42, 0.92);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-bottom: 1px solid #1e293b;
+          padding: 0.75rem 1rem;
         }
-        .header h1 {
-          font-size: 2rem;
+        .header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          max-width: 960px;
+          margin: 0 auto;
+        }
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        .header-left h1 {
+          font-size: 1.25rem;
           font-weight: 700;
           color: #f1f5f9;
           margin: 0;
         }
         .subtitle {
           color: #64748b;
-          margin: 0.5rem 0 0;
-          font-size: 0.9rem;
+          margin: 0;
+          font-size: 0.75rem;
         }
+        .header-right {
+          display: flex;
+          align-items: center;
+        }
+        .badge {
+          background: #1e293b;
+          border: 1px solid #334155;
+          color: #f1f5f9;
+          font-size: 0.9rem;
+          font-weight: 600;
+          padding: 0.35rem 0.75rem;
+          border-radius: 8px;
+        }
+
+        .hamburger {
+          display: none;
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 0.5rem;
+          margin: -0.5rem;
+          z-index: 110;
+        }
+        .bar {
+          display: block;
+          width: 20px;
+          height: 2px;
+          background: #e2e8f0;
+          margin: 4px 0;
+          border-radius: 2px;
+          transition: all 0.3s ease;
+        }
+        .bar.open:nth-child(1) {
+          transform: rotate(45deg) translate(4px, 4px);
+        }
+        .bar.open:nth-child(2) {
+          opacity: 0;
+        }
+        .bar.open:nth-child(3) {
+          transform: rotate(-45deg) translate(4px, -4px);
+        }
+
+        .drawer-overlay {
+          display: none;
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          z-index: 200;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+        .drawer-overlay.visible {
+          opacity: 1;
+        }
+        .drawer {
+          display: none;
+        }
+
         .main {
           max-width: 960px;
           margin: 0 auto;
+          padding: 1.5rem 1rem;
         }
         .cards {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
           gap: 1rem;
-          margin-bottom: 2rem;
+          margin-bottom: 1.5rem;
         }
         .card {
           background: #1e293b;
           border: 1px solid #334155;
           border-radius: 12px;
-          padding: 1.5rem;
+          padding: 1.25rem;
           display: flex;
           flex-direction: column;
         }
@@ -461,12 +617,12 @@ export default function Home() {
           border-left-color: #ef4444;
         }
         .label {
-          font-size: 0.85rem;
+          font-size: 0.8rem;
           color: #94a3b8;
           margin-bottom: 0.25rem;
         }
         .value {
-          font-size: 1.75rem;
+          font-size: 1.5rem;
           font-weight: 700;
           color: #f1f5f9;
           display: flex;
@@ -475,12 +631,12 @@ export default function Home() {
           flex-wrap: wrap;
         }
         .range-value {
-          font-size: 1.1rem;
+          font-size: 1rem;
           gap: 0.4rem;
         }
         .range-sep {
           color: #64748b;
-          font-size: 1rem;
+          font-size: 0.9rem;
         }
         .card.profit.up .value {
           color: #22c55e;
@@ -489,9 +645,9 @@ export default function Home() {
           color: #ef4444;
         }
         .pct {
-          font-size: 0.85rem;
+          font-size: 0.75rem;
           font-weight: 600;
-          padding: 0.15rem 0.5rem;
+          padding: 0.15rem 0.4rem;
           border-radius: 6px;
         }
         .pct.up {
@@ -503,7 +659,7 @@ export default function Home() {
           background: rgba(239, 68, 68, 0.1);
         }
         .meta {
-          font-size: 0.8rem;
+          font-size: 0.75rem;
           color: #64748b;
           margin-top: 0.25rem;
         }
@@ -511,35 +667,45 @@ export default function Home() {
           background: #1e293b;
           border: 1px solid #334155;
           border-radius: 12px;
-          padding: 1.5rem;
+          padding: 1.25rem;
         }
         .chart-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
           margin-bottom: 1rem;
-          flex-wrap: wrap;
           gap: 0.75rem;
         }
         .chart-header h2 {
-          font-size: 1.1rem;
+          font-size: 1rem;
           margin: 0;
           color: #e2e8f0;
+          white-space: nowrap;
         }
         .range-buttons {
           display: flex;
-          gap: 0.35rem;
+          gap: 0.3rem;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          padding: 0.1rem;
+        }
+        .range-buttons::-webkit-scrollbar {
+          display: none;
         }
         .range-btn {
           background: transparent;
           border: 1px solid #334155;
           color: #94a3b8;
-          padding: 0.3rem 0.7rem;
+          padding: 0.35rem 0.65rem;
           border-radius: 6px;
           font-size: 0.75rem;
           font-weight: 500;
           cursor: pointer;
           transition: all 0.15s ease;
+          white-space: nowrap;
+          flex-shrink: 0;
+          min-height: 32px;
         }
         .range-btn:hover {
           border-color: #2563eb;
@@ -552,12 +718,142 @@ export default function Home() {
         }
         .chart-container {
           position: relative;
-          height: 350px;
+          height: 300px;
         }
         .no-data {
           text-align: center;
           color: #64748b;
           padding: 3rem 0;
+        }
+
+        @media (max-width: 640px) {
+          .page {
+            padding: 0;
+          }
+          .hamburger {
+            display: block;
+          }
+          .header-left h1 {
+            font-size: 1.1rem;
+          }
+          .header-right .badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+          }
+          .drawer-overlay {
+            display: block;
+            pointer-events: none;
+          }
+          .drawer-overlay.visible {
+            pointer-events: auto;
+          }
+          .drawer {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            height: 100dvh;
+            background: #0f172a;
+            border-right: 1px solid #1e293b;
+            z-index: 210;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          .drawer.open {
+            transform: translateX(0);
+          }
+          .drawer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #1e293b;
+          }
+          .drawer-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #f1f5f9;
+          }
+          .drawer-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.25rem;
+          }
+          .drawer-links {
+            list-style: none;
+            padding: 0.5rem 0;
+            margin: 0;
+          }
+          .drawer-links li a {
+            display: block;
+            padding: 0.85rem 1rem;
+            color: #e2e8f0;
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: background 0.15s;
+          }
+          .drawer-links li a:hover {
+            background: #1e293b;
+          }
+          .drawer-footer {
+            margin-top: auto;
+            padding: 1rem;
+            border-top: 1px solid #1e293b;
+            color: #64748b;
+            font-size: 0.75rem;
+          }
+          .main {
+            padding: 1rem 0.75rem;
+          }
+          .cards {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+          }
+          .card {
+            padding: 1rem;
+          }
+          .value {
+            font-size: 1.35rem;
+          }
+          .range-value {
+            font-size: 0.9rem;
+          }
+          .chart-wrapper {
+            padding: 1rem 0.75rem;
+            border-radius: 10px;
+          }
+          .chart-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+          }
+          .range-buttons {
+            width: 100%;
+            gap: 0.25rem;
+          }
+          .range-btn {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+          }
+          .chart-container {
+            height: 250px;
+            margin: 0 -0.25rem;
+          }
+        }
+
+        @media (min-width: 641px) and (max-width: 900px) {
+          .cards {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .card:last-child {
+            grid-column: 1 / -1;
+          }
         }
       `}</style>
     </div>
